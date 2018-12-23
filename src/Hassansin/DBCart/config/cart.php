@@ -32,7 +32,7 @@ return [
     | User Model
     |--------------------------------------------------------------------------
     |
-	| User Model to associate with Cart orders
+    | User Model to associate with Cart orders
     |
     */
 
@@ -43,7 +43,7 @@ return [
     | Product Model
     |--------------------------------------------------------------------------
     |
-	| Product Model to associate with Cart Lines
+    | Product Model to associate with Cart Lines
     |
     */
 
