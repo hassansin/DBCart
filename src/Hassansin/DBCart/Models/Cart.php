@@ -4,10 +4,16 @@ namespace Hassansin\DBCart\Models;
 
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Foundation\Application;
+use Illuminate\Support\Collection;
+
+const STATUS_ACTIVE = 'active';
+const STATUS_PENDING = 'pending';
+const STATUS_EXPIRED = 'expired';
+const STATUS_COMPLETE = 'complete';
 
 class Cart extends Model
 {
-    
     /**
      * The database table used by the model.
      *
@@ -36,10 +42,12 @@ class Cart extends Model
      */
     protected $casts = [
         'total_price' => 'float',
+        'item_count' => 'int',
     ];
 
     /**
     * Get the user that owns the cart.
+    * @codeCoverageIgnore
     */
     public function user()
     {
@@ -54,19 +62,19 @@ class Cart extends Model
     }
 
     public function scopePending($query){
-        return $query->where('status', 'pending' );
+        return $query->where('status', STATUS_PENDING );
     }
 
     public function scopeCompleted($query){
-        return $query->where('status', 'completed' );
+        return $query->where('status', STATUS_COMPLETE );
     }
 
     public function scopeExpired($query){
-        return $query->where('status', 'expired' );
+        return $query->where('status', STATUS_EXPIRED );
     }
 
     public function scopeActive($query){
-        return $query->where('status', 'active' );
+        return $query->where('status', STATUS_ACTIVE );
     }
 
     public function scopeInstance($query, $instance_name = 'default'){
@@ -111,6 +119,8 @@ class Cart extends Model
         $request = app('request');
         $session_id = $request->session()->getId();        
         $user_id = config('cart.user_id');
+        $app = Application::getInstance();
+        $carts = $app->offsetGet("cart_instances");
 
         if ($user_id instanceof \Closure)
             $user_id = $user_id();
@@ -128,7 +138,7 @@ class Cart extends Model
                     $attributes = array(
                         'user_id' => $user_id,
                         'name' => $instance_name,
-                        'status' => 'active'
+                        'status' => STATUS_ACTIVE
                     );
                     if($save_on_demand)
                         $cart = new static($attributes);                        
@@ -156,14 +166,14 @@ class Cart extends Model
             }            
             
             $request->session()->forget('cart_'.$instance_name); //no longer need it.
-            return $cart;      
+            $carts[$instance_name] = $cart;
         } 
         //guest user, create cart with session id
         else{
             $attributes = array(
                 'session' => $session_id,
                 'name' => $instance_name,
-                'status' => 'active'
+                'status' => STATUS_ACTIVE
             );
             $cart = static::firstOrNew($attributes);
 
@@ -173,8 +183,10 @@ class Cart extends Model
             //save current session id, since upon login session id will be regenerated
             //we will use this id to get back the cart before login
             $request->session()->put('cart_'.$instance_name, $session_id);
-            return $cart;
+            $carts[$instance_name] = $cart;
         }
+        $app->offsetSet("cart_instances", $carts);
+        return $carts[$instance_name];
     }
 
     /**
@@ -188,8 +200,8 @@ class Cart extends Model
         //delete line items
         static::deleting(function(Cart $cart) {
             $cart->items()->delete();
-        });        
-    }    
+        });
+    }
 
     /**
      * If a change is made to items, then reset lazyloaded relations to reflect new changes
@@ -203,12 +215,17 @@ class Cart extends Model
     }
 
     /**
-     * Add item to a cart
+     * Add item to a cart. Increases quantity if the item already exists.
      *
      * @param  array $attributes
      */    
-    public function addItem(array $attributes = []){        
-        return $this->items()->create($attributes);                     
+    public function addItem(array $attributes = []){
+        if($item = $this->getItem(collect($attributes)->except(['quantity']))){
+            $item->quantity += $attributes['quantity'];
+            $item->save();
+            return $item;
+        }
+        return $this->items()->create($attributes);
     }
 
     /**
@@ -217,7 +234,7 @@ class Cart extends Model
      * @param  array $attributes
      */  
     public function removeItem(array $attributes = []){
-        return $this->items()->where($attributes)->first()->delete();        
+        return $this->items()->where($attributes)->first()->delete();
     }
 
     /**
@@ -227,7 +244,7 @@ class Cart extends Model
      */
     public function updateItem(array $where, array $values){
         return $this->items()->where($where)->first()->update($values);
-    }    
+    }
 
 
     /**
@@ -235,7 +252,7 @@ class Cart extends Model
      *
      */
     public function checkout(){
-        return $this->update( ['status' => 'pending', 'placed_at' => Carbon::now()]);
+        return $this->update( ['status' => STATUS_PENDING, 'placed_at' => Carbon::now()]);
     }    
 
     /**
@@ -243,7 +260,7 @@ class Cart extends Model
      *
      */
     public function expire(){
-        return $this->update(['status' => 'expired']);
+        return $this->update(['status' => STATUS_EXPIRED]);
     }
 
     /**
@@ -251,7 +268,7 @@ class Cart extends Model
      *
      */
     public function complete(){
-        return $this->update(['status' => 'complete', 'completed_at' => Carbon::now()]);
+        return $this->update(['status' => STATUS_COMPLETE, 'completed_at' => Carbon::now()]);
     }
 
     /**
@@ -259,11 +276,18 @@ class Cart extends Model
      *
      */
     public function isEmpty(){
-        return $this->items->count() === 0;
+        return empty($this->item_count);
+    }
+
+    public function getItem($where) {
+        if($where instanceof Collection) {
+            $where = $where->toArray();
+        }
+        return $this->items()->where($where)->first();
     }
 
     public function hasItem($where){
-        return !is_null($this->items()->where($where)->first());
+        return !is_null($this->getItem($where));
     }
 
     /**

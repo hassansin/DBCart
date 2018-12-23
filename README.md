@@ -94,7 +94,7 @@ Since `$cart` is eloquent model instance, you can use any of the eloquent method
 ```php
 $items = $cart->items // by dynamic property access
 $items = $cart->items()->get()  
-$items = $cart->items()->where('quantity', '=>', 2)->get()
+$items = $cart->items()->where('quantity', '>=', 2)->get()
 ```
 
 #### Update an Item: `$cart->updateItem($where, $attributes)`

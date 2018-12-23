@@ -34,11 +34,15 @@ class CartLine extends Model
      * @var array
      */
     protected $casts = [
+        'cart_id' => 'int',
+        'product_id' => 'int',
+        'quantity' => 'int',
         'unit_price' => 'float',
     ];
 
     /**
     * Get the product record associated with the item.
+    * @codeCoverageIgnore
     */
     public function product()
     {
@@ -111,7 +115,9 @@ class CartLine extends Model
     */
     public function moveTo(Cart $cart){
         $this->delete(); // delete from own cart
-        return $cart->items()->create($this->attributes);
+        $attr = $this->attributes;
+        unset($attr['cart_id']);
+        return $cart->items()->create($attr);
     }
 
     /**
@@ -142,9 +148,8 @@ class CartLine extends Model
             $cart->save();
         });
 
-        //when item deleted
-        static::deleted(function(CartLine $line){            
-            $cart = $line->getCartInstance() ?: $line->cart;    
+        static::deleted(function(CartLine $line){
+            $cart = $line->getCartInstance() ?: $line->cart;
             $cart->resetRelations();
 
             $cart->total_price = $cart->total_price - $line->getPrice();

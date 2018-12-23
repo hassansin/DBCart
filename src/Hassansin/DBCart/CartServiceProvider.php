@@ -20,7 +20,7 @@ class CartServiceProvider extends ServiceProvider {
      */
     public function boot()
     {
-    	//   
+        //...
     }
 
 	/**
@@ -60,6 +60,9 @@ class CartServiceProvider extends ServiceProvider {
 	    );
 	}
 
+    /*
+     * @codeCoverageIgnore
+     */
 	protected function registerScheduler(){
 		$schedule = $this->app['Illuminate\Console\Scheduling\Schedule'];
 		$events = $this->app['events'];
@@ -75,6 +78,7 @@ class CartServiceProvider extends ServiceProvider {
 	/**
      * Get the services provided by the provider.
      *
+     * @codeCoverageIgnore
      * @return array
      */
     public function provides()
