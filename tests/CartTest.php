@@ -50,7 +50,7 @@ class CartTest extends Orchestra\Testbench\TestCase
             'product_id' => 1,
             'unit_price' => 10.5,
             'quantity' => 2
-        ]); 
+        ]);
         $this->assertCount(3, DB::getQueryLog());
         $this->assertEquals(2, $cart->item_count);
         $this->assertCount(1, $cart->items);
@@ -66,7 +66,7 @@ class CartTest extends Orchestra\Testbench\TestCase
             'product_id' => 1,
             'unit_price' => 10.5,
             'quantity' => 2
-        ]); 
+        ]);
         DB::enableQueryLog();
         $cart->addItem([
             'product_id' => 1,
@@ -87,7 +87,7 @@ class CartTest extends Orchestra\Testbench\TestCase
             'product_id' => 1,
             'unit_price' => 10.5,
             'quantity' => 2
-        ]); 
+        ]);
         $this->assertEquals(2, $cart->item_count);
         $this->assertCount(1, $cart->items()->where('quantity', '=', 2)->get());
         $this->assertCount(1, $cart->items()->where('unit_price', '>=', 1)->get());
@@ -107,7 +107,7 @@ class CartTest extends Orchestra\Testbench\TestCase
             'product_id' => 1,
             'unit_price' => 10.5,
             'quantity' => 2
-        ]); 
+        ]);
         $this->assertEquals(2, $cart->item_count);
         $this->assertCount(1, $cart->items()->where('quantity', '=', 2)->get());
         $this->assertCount(1, $cart->items()->where('unit_price', '>=', 1)->get());
@@ -282,7 +282,7 @@ class CartTest extends Orchestra\Testbench\TestCase
             'product_id' => 1,
             'unit_price' => 10.5,
             'quantity' => 2
-        ]); 
+        ]);
 
         $this->assertFalse($cart->isEmpty());
     }
@@ -296,7 +296,7 @@ class CartTest extends Orchestra\Testbench\TestCase
             'product_id' => 1,
             'unit_price' => 10.5,
             'quantity' => 2
-        ]); 
+        ]);
 
         $this->assertTrue($cart->hasItem(['product_id' => 1]));
     }
@@ -308,7 +308,7 @@ class CartTest extends Orchestra\Testbench\TestCase
             'product_id' => 2,
             'quantity' => 1,
             'unit_price' => 0,
-        ]); 
+        ]);
         $this->assertFalse($cart->hasItem(['foo' => 1]));
     }
 
@@ -318,7 +318,7 @@ class CartTest extends Orchestra\Testbench\TestCase
             'product_id' => 1,
             'unit_price' => 10.5,
             'quantity' => 2
-        ]); 
+        ]);
 
         DB::enableQueryLog();
         $cart->clear();

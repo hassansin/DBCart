@@ -110,14 +110,14 @@ class Cart extends Model
 
     /**
      * Initialize the cart
-     * 
+     *
      * @param  string  $instance_name
      * @return mixed
      */
-    public static function init($instance_name, $save_on_demand){        
+    public static function init($instance_name, $save_on_demand){
 
         $request = app('request');
-        $session_id = $request->session()->getId();        
+        $session_id = $request->session()->getId();
         $user_id = config('cart.user_id');
         $app = Application::getInstance();
         $carts = $app->offsetGet("cart_instances");
@@ -133,7 +133,7 @@ class Cart extends Model
             $session_cart = is_null($session_cart_id)? null: static::active()->session($session_cart_id)->where('name', $instance_name)->first();
 
             switch (true) {
-                
+
                 case is_null($user_cart) && is_null($session_cart): //no user cart or session cart
                     $attributes = array(
                         'user_id' => $user_id,
@@ -141,33 +141,33 @@ class Cart extends Model
                         'status' => STATUS_ACTIVE
                     );
                     if($save_on_demand)
-                        $cart = new static($attributes);                        
+                        $cart = new static($attributes);
                     else
                         $cart = static::create($attributes);
 
                     break;
-                
+
                 case !is_null($user_cart) && is_null($session_cart): //only user cart
                     $cart = $user_cart;
                     break;
-                
+
                 case is_null($user_cart) && !is_null($session_cart): //only session cart
                     $cart = $session_cart;
                     $cart->user_id = $user_id;
                     $cart->session = null;
-                    $cart->save(); 
+                    $cart->save();
                     break;
-                
-                case !is_null($user_cart) && !is_null($session_cart): //both user cart and session cart exists                   
-                    $session_cart->moveItemsTo($user_cart); //move items from session cart to user cart  
+
+                case !is_null($user_cart) && !is_null($session_cart): //both user cart and session cart exists
+                    $session_cart->moveItemsTo($user_cart); //move items from session cart to user cart
                     $session_cart->delete(); //delete session cart
                     $cart = $user_cart;
                     break;
-            }            
-            
+            }
+
             $request->session()->forget('cart_'.$instance_name); //no longer need it.
             $carts[$instance_name] = $cart;
-        } 
+        }
         //guest user, create cart with session id
         else{
             $attributes = array(
@@ -207,18 +207,18 @@ class Cart extends Model
      * If a change is made to items, then reset lazyloaded relations to reflect new changes
      *
      */
-    public function resetRelations(){        
+    public function resetRelations(){
         foreach($this->relations as $key => $value){
             $this->getRelationshipFromMethod($key);
-        }        
-        return $this;        
+        }
+        return $this;
     }
 
     /**
      * Add item to a cart. Increases quantity if the item already exists.
      *
      * @param  array $attributes
-     */    
+     */
     public function addItem(array $attributes = []){
         if($item = $this->getItem(collect($attributes)->except(['quantity']))){
             $item->quantity += $attributes['quantity'];
@@ -230,16 +230,16 @@ class Cart extends Model
 
     /**
      * remove item from a cart
-     *     
+     *
      * @param  array $attributes
-     */  
+     */
     public function removeItem(array $attributes = []){
         return $this->items()->where($attributes)->first()->delete();
     }
 
     /**
      * update item in a cart
-     *     
+     *
      * @param  array $attributes
      */
     public function updateItem(array $where, array $values){
@@ -248,12 +248,12 @@ class Cart extends Model
 
 
     /**
-     * Cart checkout. 
+     * Cart checkout.
      *
      */
     public function checkout(){
         return $this->update( ['status' => STATUS_PENDING, 'placed_at' => Carbon::now()]);
-    }    
+    }
 
     /**
      * Expires a cart
@@ -299,7 +299,7 @@ class Cart extends Model
         $this->resetRelations()->updateTimestamps();
         $this->total_price = 0;
         $this->item_count = 0;
-        return $this->save();        
+        return $this->save();
     }
 
     /**
@@ -308,7 +308,7 @@ class Cart extends Model
      * @param Cart $cart
      */
     public function moveItemsTo(Cart $cart){
-        $this->items()->update(['cart_id' => $cart->id] );                    
+        $this->items()->update(['cart_id' => $cart->id] );
         $cart->item_count += $this->item_count;
         $cart->total_price += $this->total_price;
         $cart->save();
@@ -317,7 +317,5 @@ class Cart extends Model
         $this->total_price = 0;
         return $this->save();
     }
-    
-
 }
 

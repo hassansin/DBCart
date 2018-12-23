@@ -1,4 +1,4 @@
-<?php 
+<?php
 
 namespace Hassansin\DBCart;
 
@@ -29,7 +29,7 @@ class CartServiceProvider extends ServiceProvider {
 	 * @return void
 	 */
 	public function register()
-	{		
+	{
 
 		$this->registerScheduler();
 		$this->app['cart_instances'] =  [] ;
@@ -40,13 +40,13 @@ class CartServiceProvider extends ServiceProvider {
 
 			//implement singleton carts
 			if(empty($cart_instances[$instance_name])){
-				$model = config('cart.cart_model');	
-				$cart_instances[$instance_name] = $model::current($instance_name);				
-				$app['cart_instances'] = $cart_instances;				
+				$model = config('cart.cart_model');
+				$cart_instances[$instance_name] = $model::current($instance_name);
+				$app['cart_instances'] = $cart_instances;
 			}
-			return $app['cart_instances'][$instance_name];			
+			return $app['cart_instances'][$instance_name];
 		});
-		
+
 		$this->publishes([
 	        __DIR__.'/config/cart.php' => config_path('cart.php'),
 	    ],'config');
@@ -70,7 +70,7 @@ class CartServiceProvider extends ServiceProvider {
 
         $events->listen('artisan.start', function (\Illuminate\Console\Application $artisan) use($schedule, $schedule_frequency){
         	$artisan->resolveCommands(Console\Commands\CartCleanup::class);
-	        $schedule->command('cart:cleanup')->$schedule_frequency();	        
+	        $schedule->command('cart:cleanup')->$schedule_frequency();
         });
 	}
 
