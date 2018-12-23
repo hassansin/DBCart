@@ -6,7 +6,7 @@ php:
   - nightly
 
 before_script:
-  - composer install --prefer-dist --no-interaction --prefer-stable --no-suggest
+  - composer install --prefer-dist --no-interaction --no-suggest
 
 script:
   - phpunit
