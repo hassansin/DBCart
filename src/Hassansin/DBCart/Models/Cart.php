@@ -204,17 +204,6 @@ class Cart extends Model
     }
 
     /**
-     * If a change is made to items, then reset lazyloaded relations to reflect new changes
-     *
-     */
-    public function resetRelations(){
-        foreach($this->relations as $key => $value){
-            $this->getRelationshipFromMethod($key);
-        }
-        return $this;
-    }
-
-    /**
      * Add item to a cart. Increases quantity if the item already exists.
      *
      * @param  array $attributes
@@ -296,9 +285,10 @@ class Cart extends Model
      */
     public function clear(){
         $this->items()->delete();
-        $this->resetRelations()->updateTimestamps();
+        $this->updateTimestamps();
         $this->total_price = 0;
         $this->item_count = 0;
+        $this->relations = [];
         return $this->save();
     }
 
@@ -308,14 +298,28 @@ class Cart extends Model
      * @param Cart $cart
      */
     public function moveItemsTo(Cart $cart){
-        $this->items()->update(['cart_id' => $cart->id] );
-        $cart->item_count += $this->item_count;
-        $cart->total_price += $this->total_price;
-        $cart->save();
 
-        $this->item_count = 0;
-        $this->total_price = 0;
-        return $this->save();
+        \DB::transaction(function () use(&$cart){
+            $current_items = $cart->items()->pluck('product_id');
+            $items_to_move = $this->items()->whereNotIn('product_id', $current_items->toArray())->get();
+            if($items_to_move->count() === 0){
+                return;
+            }
+            $this->items()->whereNotIn('product_id', $current_items->toArray())->update([
+                'cart_id' => $cart->id
+            ]);
+            foreach($items_to_move as $item) {
+                $this->item_count -= $item->quantity;
+                $this->total_price -= $item->getPrice();
+                $cart->item_count += $item->quantity;
+                $cart->total_price += $item->getPrice();
+            }
+            $this->relations = [];
+            $cart->relations = [];
+            $this->save();
+            $cart->save();
+        });
+        return $cart;
     }
 }
 

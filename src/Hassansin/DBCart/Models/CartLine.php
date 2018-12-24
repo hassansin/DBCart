@@ -114,10 +114,14 @@ class CartLine extends Model
     * @param Cart $cart
     */
     public function moveTo(Cart $cart){
-        $this->delete(); // delete from own cart
-        $attr = $this->attributes;
-        unset($attr['cart_id']);
-        return $cart->items()->create($attr);
+        $model = null;
+        \DB::transaction(function () use($cart, &$model) {
+            $this->delete(); // delete from own cart
+            $attr = $this->attributes;
+            unset($attr['cart_id']);
+            $model = $cart->items()->create($attr);
+        });
+        return $model;
     }
 
     /**
@@ -131,29 +135,26 @@ class CartLine extends Model
         //when an item is created
         static::created(function(CartLine $line){
             $cart = $line->getCartInstance() ?: $line->cart;
-            $cart->resetRelations();
-
             $cart->total_price = $cart->total_price + $line->getPrice();
             $cart->item_count = $cart->item_count + $line->quantity;
+            $cart->relations = [];
             $cart->save();
         });
 
         //when an item is updated
         static::updated(function(CartLine $line){
             $cart = $line->getCartInstance() ?: $line->cart;
-            $cart->resetRelations();
-
             $cart->total_price = $cart->total_price - $line->getOriginalPrice() + $line->getPrice();
             $cart->item_count = $cart->item_count - $line->getOriginalQuantity() + $line->quantity;
+            $cart->relations = [];
             $cart->save();
         });
 
         static::deleted(function(CartLine $line){
             $cart = $line->getCartInstance() ?: $line->cart;
-            $cart->resetRelations();
-
             $cart->total_price = $cart->total_price - $line->getPrice();
             $cart->item_count = $cart->item_count - $line->quantity;
+            $cart->relations = [];
             $cart->save();
         });
     }

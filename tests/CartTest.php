@@ -89,6 +89,8 @@ class CartTest extends Orchestra\Testbench\TestCase
             'quantity' => 2
         ]);
         $this->assertEquals(2, $cart->item_count);
+        $this->assertCount(1, $cart->items);
+        $this->assertCount(1, $cart->items()->get());
         $this->assertCount(1, $cart->items()->where('quantity', '=', 2)->get());
         $this->assertCount(1, $cart->items()->where('unit_price', '>=', 1)->get());
         $this->assertEquals(21, $cart->total_price);
@@ -99,6 +101,7 @@ class CartTest extends Orchestra\Testbench\TestCase
         $this->assertCount(3, DB::getQueryLog());
         $this->assertEquals(0, $cart->item_count);
         $this->assertCount(0, $cart->items()->get());
+        $this->assertCount(0, $cart->items);
         $this->assertTrue($cart->isEmpty());
     }
     public function testUpdateItem(){
@@ -109,6 +112,9 @@ class CartTest extends Orchestra\Testbench\TestCase
             'quantity' => 2
         ]);
         $this->assertEquals(2, $cart->item_count);
+        $this->assertCount(1, $cart->items()->get());
+        $this->assertCount(1, $cart->items);
+        $this->assertEquals(10.5, $cart->items->first()->unit_price);
         $this->assertCount(1, $cart->items()->where('quantity', '=', 2)->get());
         $this->assertCount(1, $cart->items()->where('unit_price', '>=', 1)->get());
         $this->assertEquals(21, $cart->total_price);
@@ -116,6 +122,10 @@ class CartTest extends Orchestra\Testbench\TestCase
         DB::enableQueryLog();
         $cart->updateItem(['product_id' => 1], ['unit_price' => 15.5, 'quantity' => 3]);
         $this->assertCount(3, DB::getQueryLog());
+
+        $this->assertCount(1, $cart->items()->get());
+        $this->assertCount(1, $cart->items);
+        $this->assertEquals(15.5, $cart->items->first()->unit_price);
         $this->assertEquals(3, $cart->item_count);
         $this->assertEquals(46.5, $cart->total_price);
     }
@@ -143,8 +153,9 @@ class CartTest extends Orchestra\Testbench\TestCase
         $this->assertEquals(0, $cart2->item_count);
         $this->assertEquals(0, $cart2->total_price);
 
-        //DB::enableQueryLog();
+        DB::enableQueryLog();
         $cart1->moveItemsTo($cart2);
+        $this->assertCount(5, DB::getQueryLog());
         $this->assertTrue($cart1->isEmpty());
         $this->assertFalse($cart2->isEmpty());
         $this->assertCount(0, $cart1->items()->get());
@@ -184,7 +195,10 @@ class CartTest extends Orchestra\Testbench\TestCase
         $this->assertEquals(1, $cart2->item_count);
         $this->assertEquals(10, $cart2->total_price);
 
+        DB::enableQueryLog();
         $cart1->moveItemsTo($cart2);
+        $this->assertCount(5, DB::getQueryLog());
+        $this->assertTrue($cart1->isEmpty());
         $this->assertTrue($cart1->isEmpty());
         $this->assertFalse($cart2->isEmpty());
         $this->assertCount(0, $cart1->items()->get());
@@ -195,7 +209,6 @@ class CartTest extends Orchestra\Testbench\TestCase
         $this->assertEquals(42.5, $cart2->total_price);
     }
 
-    /*
     public function testMoveItemsToNonEmptyCartWithDuplicateProduct()
     {
         $cart1 = app('cart', ['name' => 'cart1']);
@@ -224,19 +237,29 @@ class CartTest extends Orchestra\Testbench\TestCase
         $this->assertEquals(3, $cart1->item_count);
         $this->assertEquals(32.5, $cart1->total_price);
         $this->assertEquals(1, $cart2->item_count);
-        $this->assertEquals(10, $cart2->total_price);
+        $this->assertEquals(11.5, $cart2->total_price);
 
         $cart1->moveItemsTo($cart2);
-        $this->assertTrue($cart1->isEmpty());
+        $this->assertFalse($cart1->isEmpty());
         $this->assertFalse($cart2->isEmpty());
-        $this->assertCount(0, $cart1->items()->get());
-        $this->assertCount(3, $cart2->items()->get());
-        $this->assertEquals(0, $cart1->item_count);
-        $this->assertEquals(0, $cart1->total_price);
-        $this->assertEquals(4, $cart2->item_count);
-        $this->assertEquals(42.5, $cart2->total_price);
+        $this->assertCount(1, $cart1->items()->get());
+        $this->assertCount(2, $cart2->items()->get());
+        $this->assertEquals(2, $cart1->item_count);
+        $this->assertEquals(21, $cart1->total_price);
+        $this->assertEquals(2, $cart2->item_count);
+        $this->assertEquals(23, $cart2->total_price);
     }
-     */
+
+    public function testMoveEmptyCart(){
+        $cart1 = app('cart', ['name' => 'cart1']);
+        $cart2 = app('cart', ['name' => 'cart2']);
+
+        DB::enableQueryLog();
+        $cart1->moveItemsTo($cart2);
+        $this->assertCount(2, DB::getQueryLog());
+        $this->assertTrue($cart1->isEmpty());
+        $this->assertTrue($cart2->isEmpty());
+    }
 
     public function testMoveSingleItemToEmptyCart()
     {
@@ -390,5 +413,21 @@ class CartTest extends Orchestra\Testbench\TestCase
         DB::enableQueryLog();
         $cmd->handle();
         $this->assertCount(4, DB::getQueryLog());
+    }
+
+    public function testScopeUser(){
+        $cart = DBCart::current();
+        $cart->user_id = 100;
+        $cart->save();
+        $this->assertEquals(null, Cart::active()->user()->first());
+        $this->assertEquals(null, Cart::active()->user(200)->first());
+        $this->assertEquals($cart->id, Cart::active()->user(100)->first()->id);
+    }
+
+    public function testSession(){
+        $cart = DBCart::current();
+        $cart2 = DBCart::current('another');
+        $this->assertEquals($cart->id, Cart::session()->first()->id);
+        $this->assertCount(2, Cart::session()->get());
     }
 }
